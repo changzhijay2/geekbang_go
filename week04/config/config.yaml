@@ -1,0 +1,10 @@
+mysql:
+  DBName: user
+  Username: root
+  Password: 123456
+  Host: 127.0.0.1
+  Port: 3306
+  
+grpc:
+  Host: 127.0.0.1
+  Port: 5567
