@@ -1,10 +1,10 @@
-package server
+package util
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/binary"
 	"io"
-	"net"
 )
 
 const PackageHeaderLen uint16 = 4 + 2 + 2 + 4 + 4
@@ -61,6 +61,14 @@ func (m *Message) GetBodyLen() int {
 	return len(m.body.Body)
 }
 
+func (m *Message) GetBody() []byte {
+	return m.body.Body
+}
+
+func (m *Message) GetOperator() uint32 {
+	return m.header.Operation
+}
+
 func Pack(msg *Message) ([]byte, error) {
 	dataBuff := bytes.NewBuffer([]byte{})
 	if err := binary.Write(dataBuff, binary.LittleEndian, msg.header.PackageLen); err != nil {
@@ -85,9 +93,9 @@ func Pack(msg *Message) ([]byte, error) {
 	return dataBuff.Bytes(), nil
 }
 
-func Unpack(conn net.Conn) (*Message, error) {
+func Unpack(r *bufio.Reader) (*Message, error) {
 	packageHeader := make([]byte, PackageHeaderLen)
-	_, err := io.ReadFull(conn, packageHeader)
+	_, err := io.ReadFull(r, packageHeader)
 	if err != nil {
 		return nil, err
 	}
@@ -119,7 +127,7 @@ func Unpack(conn net.Conn) (*Message, error) {
 	bodyLen := packageLen - uint32(headerLen)
 	if bodyLen > 0 {
 		body = make([]byte, bodyLen)
-		if _, err := io.ReadFull(conn, body); err != nil {
+		if _, err := io.ReadFull(r, body); err != nil {
 			return nil, err
 		}
 	}

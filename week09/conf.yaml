@@ -1,0 +1,7 @@
+
+tcp:
+  Host: 0.0.0.0
+  Port: 5576
+  MaxConn: 10000
+  RecvBufferSize: 512
+  SendBufferSize: 512

@@ -1,17 +1,16 @@
 package server
 
 import (
-	"errors"
 	"fmt"
 	"log"
 	"net"
 	"sync"
+
+	"week09/conf"
 )
 
-var ErrTcpServerClosed error = errors.New("tcp: Server closed")
-
 type Server struct {
-	connections map[int]*Connection
+	connections map[uint64]*Connection
 	mutex       sync.Mutex
 	listen      *net.TCPListener
 	isClose     bool
@@ -19,15 +18,15 @@ type Server struct {
 
 func NewServer() *Server {
 	return &Server{
-		connections: make(map[int]*Connection),
+		connections: make(map[uint64]*Connection),
 		isClose:     false,
 	}
 }
 
 func (s *Server) ListenAndServer() error {
-	host := "0.0.0.0"
-	tcpPort := 12345
-	addr, err := net.ResolveTCPAddr("tcp4", fmt.Sprintf("%s:%d", host, tcpPort))
+	host := conf.TCPConfig.Host
+	port := conf.TCPConfig.Port
+	addr, err := net.ResolveTCPAddr("tcp4", fmt.Sprintf("%s:%d", host, port))
 	if err != nil {
 		return err
 	}
@@ -41,15 +40,22 @@ func (s *Server) ListenAndServer() error {
 }
 
 func (s *Server) Serve(l *net.TCPListener) error {
-	var connId int = 0
+	var connId uint64 = 0
 	for {
 		conn, err := l.AcceptTCP()
 		if err != nil {
-			fmt.Println("accept failed, err:", err)
+			if ne, ok := err.(net.Error); ok && ne.Temporary() {
+				continue
+			}
+			log.Println("accept failed, err:", err)
+			return err
+		}
+		if len(s.connections) > conf.TCPConfig.MaxConn {
+			log.Println("Maximum number of connections reached, ignoring this request, addr:", conn.RemoteAddr().String())
 			continue
 		}
 
-		c := NewConnection(conn, connId)
+		c := NewConnection(conn, connId, s)
 		s.AddConn(c)
 		connId++
 
@@ -71,7 +77,7 @@ func (s *Server) RemoveConn(conn *Connection) {
 
 func (s *Server) Stop() error {
 	s.mutex.Lock()
-	defer s.mutex.Lock()
+	defer s.mutex.Unlock()
 	if s.isClose {
 		return nil
 	}
