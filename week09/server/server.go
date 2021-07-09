@@ -13,13 +13,11 @@ type Server struct {
 	connections map[uint64]*Connection
 	mutex       sync.Mutex
 	listen      *net.TCPListener
-	isClose     bool
 }
 
 func NewServer() *Server {
 	return &Server{
 		connections: make(map[uint64]*Connection),
-		isClose:     false,
 	}
 }
 
@@ -66,21 +64,18 @@ func (s *Server) Serve(l *net.TCPListener) error {
 func (s *Server) AddConn(conn *Connection) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-	s.connections[conn.ConnId] = conn
+	s.connections[conn.connId] = conn
 }
 
 func (s *Server) RemoveConn(conn *Connection) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-	delete(s.connections, conn.ConnId)
+	delete(s.connections, conn.connId)
 }
 
 func (s *Server) Stop() error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-	if s.isClose {
-		return nil
-	}
 	if err := s.listen.Close(); err != nil {
 		return err
 	}
@@ -89,7 +84,6 @@ func (s *Server) Stop() error {
 		delete(s.connections, connId)
 		conn.Close()
 	}
-	s.isClose = true
 	log.Println("tcp server stop.")
 	return nil
 }
