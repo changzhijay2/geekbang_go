@@ -33,7 +33,9 @@ func (s *Server) ListenAndServer() error {
 		return err
 	}
 	log.Printf("tcp server listening on %s\n", addr)
+	s.mutex.Lock()
 	s.listen = listen
+	s.mutex.Unlock()
 	return s.Serve(listen)
 }
 
@@ -56,6 +58,7 @@ func (s *Server) Serve(l *net.TCPListener) error {
 		c := NewConnection(conn, connId, s)
 		s.AddConn(c)
 		connId++
+		log.Printf("accept connection, addr:%s, connID = %d.\n", conn.RemoteAddr().String(), connId)
 
 		go c.Serve()
 	}
@@ -79,9 +82,7 @@ func (s *Server) Stop() error {
 	if err := s.listen.Close(); err != nil {
 		return err
 	}
-
-	for connId, conn := range s.connections {
-		delete(s.connections, connId)
+	for _, conn := range s.connections {
 		conn.Close()
 	}
 	log.Println("tcp server stop.")
